@@ -12,10 +12,8 @@ log() {
 : "${LOGFILE:=/var/log/check_site.log}"
 
 temp_db=$(mktemp) || { log "Failed to create temporary database file" "ERROR"; exit 1; }
-trap 'rm -f "$temp_db"' EXIT 
-
 while IFS=' ' read -r url name last_status last_timestamp; do 
-  ping -c 1 8.8.8.8 &>/dev/null || { log "Network is down, skipping website checks." "ERROR"; continue}
+  ping -c 1 8.8.8.8 &>/dev/null || { log "Network is down, skipping website checks." "ERROR"; continue; }
 
   status_code=$(curl -Is --retry 2 --max-time 20 -L -w "%{http_code}" -o /dev/null "$url")
   status="DOWN"
