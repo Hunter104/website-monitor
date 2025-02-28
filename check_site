@@ -4,7 +4,7 @@ set -euo pipefail
 
 log() {
   local level="${2:-INFO}"
-  echo "$(date -Is) [$level] $1" | tee -a "$LOGFILE" >&$([[ $level == ERROR ]] && echo 2 || echo 3)
+  echo "[$(date -Is)] [$level] $1" | tee -a "$LOGFILE" >&$([[ $level == ERROR ]] && echo 2 || echo 3)
 }
 
 : "${WEBSITE_DB:=./websites}" && [[ -f $WEBSITE_DB ]] || { log "Missing website database: $WEBSITE_DB" "ERROR"; exit 1; }
