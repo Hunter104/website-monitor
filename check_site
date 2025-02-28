@@ -9,7 +9,7 @@ log() {
 }
 
 format_message() {
-  [[ $1 == UP ]] && echo "✅ **$2** está online!" || echo "❌ **$2** está offline!"
+  [[ $1 == UP ]] && echo "✅ **$2** está online!" || echo "❌ **$2** caiu!"
 }
 
 check_status() {
