@@ -11,7 +11,7 @@ log() {
   local message="$1"
   local level="${2:-INFO}"
   
-  local timestamp="[$(date "+%Y-%m-%d %H:%M:%S")]"
+  local timestamp="[$(date -Is)]"
 
   if [[ $level == ERROR ]]; then 
     echo "$timestamp [ERROR] $message" | tee -a "$LOGFILE" >&2
