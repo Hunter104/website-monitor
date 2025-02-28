@@ -1,5 +1,4 @@
 #!/usr/bin/bash
-
 exec 3>&1
 set -euo pipefail
 
@@ -7,17 +6,12 @@ set -euo pipefail
 readonly WEBSITE_DB="/var/lib/check_site/websites"
 readonly LOGFILE="/var/log/check_site.log"
 
-log() {
-  local message="$1"
-  local level="${2:-INFO}"
-  
-  local timestamp="[$(date -Is)]"
+[[ -f $WEBSITE_DB ]] || { log "Missing website database: $WEBSITE_DB" "ERROR"; exit 1; }
+[[ -z $HOOK_URL ]] || { log "HOOK_URL not set." "ERROR"; exit 1; }
 
-  if [[ $level == ERROR ]]; then 
-    echo "$timestamp [ERROR] $message" | tee -a "$LOGFILE" >&2
-  else 
-    echo "$timestamp [$level] $message" | tee -a "$LOGFILE" 1>&3
-  fi
+log() {
+  local level="${2:-INFO}"
+  echo "$(date -Is) [$level] $1" | tee -a "$LOGFILE" $([[ $level == ERROR ]] && echo >&2 || echo >&3)
 }
 
 format_message() {
@@ -25,57 +19,31 @@ format_message() {
 }
 
 check_status() {
-  local url="$1"
-  local name="$2"
   local status_code=$(curl -Is --retry 5 --max-time 20 -L -w "%{http_code}" -o /dev/null "$1")
-  local exit_code=$?
 
-  if [[ $exit_code -eq 28 ]]; then 
-    log "Timeout while checking $name ($url)"
-    log "Setting status to DOWN"
-  elif [[ $exit_code -ne 0 ]]; then 
-    log "Curl error while checking $name ($url), exit code: $exit_code" "ERROR"
-    log "Assuming status is DOWN"
-  else
-    log "Response for $name ($url): $status_code"
+  if [[ $? -eq 28 ]]; then 
+    log "Timeout while checking $1 ($2). Setting status to DOWN"
+  elif [[ $? -ne 0 ]]; then 
+    log "Error while checking $1 ($2), exit code: $exit_code. Setting status to DOWN" "ERROR"
   fi
 
-  [[ $status_code == 200 ]] \
-    && echo "UP" \
-    || echo "DOWN"
+  log "Response for $name ($url): $status_code"
+
+  [[ $status_code == 200 ]] && echo "UP" || echo "DOWN"
 }
-
-check_network() {
-  if ping -c 1 8.8.8.8 &>/dev/null; then
-    return 0
-  else 
-    return 1
-  fi
-}
-
-if [[ ! -f $WEBSITE_DB ]]; then 
-  log "Website database not found at $WEBSITE_DB." "ERROR"
-  exit 1
-fi
-
-if [[ -z "$HOOK_URL" ]]; then 
-  log "HOOK_URL environment variable is not set." "ERROR"
-  exit 1
-fi
 
 temp_db=$(mktemp) || { log "Failed to create temporary database file" "ERROR"; exit 1; }
-
 while IFS=' ' read -r url name last_status last_timestamp; do 
-  if ! check_network; then 
+
+  if ! ping -c 1 8.8.8.8 &>/dev/null; then 
     log "Network is down, skipping website checks." "ERROR"
     continue
   fi
-  status=$(check_status "$url" "$name")
 
+  status=$(check_status "$url" "$name")
   if [[ $status != $last_status ]]; then 
     log "$name changed to $status"
-    curl -H "Content-Type: application/json" -X POST \
-      -d "{\"content\":\"$(format_message "$status" "$name")\"}" "$HOOK_URL"
+    curl -H "Content-Type: application/json" -X POST -d "{\"content\":\"$(format_message "$status" "$name")\"}" "$HOOK_URL"
   else 
     log "$name remains $last_status"
   fi
