@@ -65,7 +65,7 @@ fi
 
 temp_db=$(mktemp) || { log "Failed to create temporary database file" "ERROR"; exit 1; }
 
-while IFS=' ' read -r url name last_status; do 
+while IFS=' ' read -r url name last_status last_timestamp; do 
   if ! check_network; then 
     log "Network is down, skipping website checks." "ERROR"
     continue
@@ -80,7 +80,7 @@ while IFS=' ' read -r url name last_status; do
     log "$name remains $last_status"
   fi
 
-  echo "$url $name $status" >> "$temp_db"
+  echo "$url $name $status $(date -Is)" >> "$temp_db"
 done < "$WEBSITE_DB"
 
 mv "$temp_db" "$WEBSITE_DB"
