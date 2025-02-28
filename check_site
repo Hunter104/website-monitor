@@ -45,6 +45,14 @@ check_status() {
     || echo "DOWN"
 }
 
+check_network() {
+  if ping -c 1 8.8.8.8 &>/dev/null; then
+    return 0
+  else 
+    return 1
+  fi
+}
+
 if [[ ! -f $WEBSITE_DB ]]; then 
   log "Website database not found at $WEBSITE_DB." "ERROR"
   exit 1
@@ -58,6 +66,10 @@ fi
 temp_db=$(mktemp) || { log "Failed to create temporary database file" "ERROR"; exit 1; }
 
 while IFS=' ' read -r url name last_status; do 
+  if ! check_network; then 
+    log "Network is down, skipping website checks." "ERROR"
+    continue
+  end
   status=$(check_status "$url" "$name")
 
   if [[ $status != $last_status ]]; then 
