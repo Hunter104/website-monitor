@@ -2,20 +2,18 @@
 exec 3>&1
 set -euo pipefail
 
-# HOOK_URL is an environment variable
-readonly WEBSITE_DB="/var/lib/check_site/websites"
-readonly LOGFILE="/var/log/check_site.log"
-
-: ${HOOK_URL:?}
-[[ -f $WEBSITE_DB ]] || { log "Missing website database: $WEBSITE_DB" "ERROR"; exit 1; }
-
 log() {
   local level="${2:-INFO}"
   echo "$(date -Is) [$level] $1" | tee -a "$LOGFILE" $([[ $level == ERROR ]] && echo >&2 || echo >&3)
 }
 
+: "${WEBSITE_DB:=./websites}"
+: "${HOOK_URL:?}"
+: "${LOGFILE:=/var/log/check_site.log}"
+
+[[ -f $WEBSITE_DB ]] || { log "Missing website database: $WEBSITE_DB" "ERROR"; exit 1; }
+
 temp_db=$(mktemp) || { log "Failed to create temporary database file" "ERROR"; exit 1; }
-trap 'rm -f "$temp_db"' EXIT
 
 while IFS=' ' read -r url name last_status last_timestamp; do 
   ping -c 1 8.8.8.8 &>/dev/null || { log "Network is down, skipping website checks." "ERROR"; continue}
