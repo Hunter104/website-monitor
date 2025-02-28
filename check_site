@@ -27,7 +27,7 @@ format_message() {
 check_status() {
   local url="$1"
   local name="$2"
-  local status_code=$(curl -Is --max-time 10 -L -w "%{http_code}" -o /dev/null "$1")
+  local status_code=$(curl -Is --retry 5 --max-time 20 -L -w "%{http_code}" -o /dev/null "$1")
   local exit_code=$?
 
   if [[ $exit_code -eq 28 ]]; then 
