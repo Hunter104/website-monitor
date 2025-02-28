@@ -16,11 +16,10 @@ while IFS=' ' read -r url name last_status last_timestamp; do
   ping -c 1 8.8.8.8 &>/dev/null || { log "Network is down, skipping website checks." "ERROR"; continue; }
 
   status_code=$(curl -Is --retry 2 --max-time 20 -L -w "%{http_code}" -o /dev/null "$url")
-  status="DOWN"
   case $? in
     0) log "Response for $name ($url): $status_code"; [[ $status_code == 200 ]] && status="UP" ;;
-    28) log "Timeout while checking $name ($url), assuming DOWN" ;;
-    *) log "Curl error $? while checking $name ($url), assuming DOWN" "ERROR" ;;
+    28) log "Timeout while checking $name ($url)"; status="DOWN" ;;
+    *) log "Curl error $? while checking $name ($url), leaving unchanged" "ERROR"; status=$last_status ;;
   esac
 
   if [[ $status != $last_status ]]; then 
