@@ -6,44 +6,32 @@ set -euo pipefail
 readonly WEBSITE_DB="/var/lib/check_site/websites"
 readonly LOGFILE="/var/log/check_site.log"
 
+: ${HOOK_URL:?}
 [[ -f $WEBSITE_DB ]] || { log "Missing website database: $WEBSITE_DB" "ERROR"; exit 1; }
-[[ -z $HOOK_URL ]] || { log "HOOK_URL not set." "ERROR"; exit 1; }
 
 log() {
   local level="${2:-INFO}"
   echo "$(date -Is) [$level] $1" | tee -a "$LOGFILE" $([[ $level == ERROR ]] && echo >&2 || echo >&3)
 }
 
-format_message() {
-  [[ $1 == UP ]] && echo "✅ **$2** está online!" || echo "❌ **$2** caiu!"
-}
-
-check_status() {
-  local status_code=$(curl -Is --retry 5 --max-time 20 -L -w "%{http_code}" -o /dev/null "$1")
-
-  if [[ $? -eq 28 ]]; then 
-    log "Timeout while checking $1 ($2). Setting status to DOWN"
-  elif [[ $? -ne 0 ]]; then 
-    log "Error while checking $1 ($2), exit code: $exit_code. Setting status to DOWN" "ERROR"
-  fi
-
-  log "Response for $name ($url): $status_code"
-
-  [[ $status_code == 200 ]] && echo "UP" || echo "DOWN"
-}
-
 temp_db=$(mktemp) || { log "Failed to create temporary database file" "ERROR"; exit 1; }
+trap 'rm -f "$temp_db"' EXIT
+
 while IFS=' ' read -r url name last_status last_timestamp; do 
+  ping -c 1 8.8.8.8 &>/dev/null || { log "Network is down, skipping website checks." "ERROR"; continue}
 
-  if ! ping -c 1 8.8.8.8 &>/dev/null; then 
-    log "Network is down, skipping website checks." "ERROR"
-    continue
-  fi
+  status_code=$(curl -Is --retry 5 --max-time 20 -L -w "%{http_code}" -o /dev/null "$1")
+  status="DOWN"
+  case $? in
+    0) log "Response for $name ($url): $status_code"; [[ $status_code == 200 ]] && status="UP" ;;
+    28) log "Timeout while checking $name ($url), assuming DOWN" "ERROR" ;;
+    *) log "Curl error $? while checking $name ($url), assuming DOWN" "ERROR" ;;
+  esac
 
-  status=$(check_status "$url" "$name")
   if [[ $status != $last_status ]]; then 
     log "$name changed to $status"
-    curl -H "Content-Type: application/json" -X POST -d "{\"content\":\"$(format_message "$status" "$name")\"}" "$HOOK_URL"
+    [[ $status == UP ]] && message="✅ **$name** está online!" || message="❌ **$name** caiu!"
+    curl -H "Content-Type: application/json" -X POST -d "{\"content\":\"$message\"}" "$HOOK_URL"
   else 
     log "$name remains $last_status"
   fi
