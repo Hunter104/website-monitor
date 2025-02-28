@@ -1,36 +1,21 @@
 #!/usr/bin/bash
-exec 3>&1
-set -euo pipefail
-
-log() {
-  local level="${2:-INFO}"
-  echo "[$(date -Is)] [$level] $1" | tee -a "$LOGFILE" >&$([[ $level == ERROR ]] && echo 2 || echo 3)
-}
-
-: "${WEBSITE_DB:=./websites}" && [[ -f $WEBSITE_DB ]] || { log "Missing website database: $WEBSITE_DB" "ERROR"; exit 1; }
+: "${WEBSITE_DB:=./websites}" && [[ -f $WEBSITE_DB ]] || { echo "Missing website database: $WEBSITE_DB"; exit 1; }
 : "${HOOK_URL:?}"
-: "${LOGFILE:=./check_site.log}"
+ping -c 1 8.8.8.8 &>/dev/null ||  { echo "Network is down, skipping website checks."; exit 1; }
 
-temp_db=$(mktemp) || { log "Failed to create temporary database file" "ERROR"; exit 1; }
 while IFS=' ' read -r url name last_status last_timestamp; do 
-  ping -c 1 8.8.8.8 &>/dev/null || { log "Network is down, skipping website checks." "ERROR"; continue; }
-
   status_code=$(curl -Is --retry 2 --max-time 20 -L -w "%{http_code}" -o /dev/null "$url")
   case $? in
-    0) log "Response for $name ($url): $status_code"; [[ $status_code == 200 ]] && status="UP" ;;
-    28) log "Timeout while checking $name ($url)"; status="DOWN" ;;
-    *) log "Curl error $? while checking $name ($url), leaving unchanged" "ERROR"; status=$last_status ;;
+    0) echo "Response for $name ($url): $status_code"; [[ $status_code == 200 ]] && status="UP" || status="DOWN" ;;
+    28) echo "Timeout while checking $name ($url)"; status="DOWN" ;;
+    *) echo "Curl error $? while checking $name ($url), leaving unchanged" ; continue ;;
   esac
 
   if [[ $status != $last_status ]]; then 
-    log "$name changed to $status"
+    echo "$name changed to $status"
     message=$([[ $status == UP ]] && echo "✅ **$name** está online!" || echo "❌ **$name** caiu!")
     curl -H "Content-Type: application/json" -X POST -d "{\"content\":\"$message\"}" "$HOOK_URL"
-  else 
-    log "$name remains $last_status"
   fi
 
-  echo "$url $name $status $(date -Is)" >> "$temp_db"
+  sed -i "s#^$url $name $last_status .*#$url $name $status $(date -Is)#" "$WEBSITE_DB"
 done < "$WEBSITE_DB"
-
-mv "$temp_db" "$WEBSITE_DB"
