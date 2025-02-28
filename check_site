@@ -9,7 +9,7 @@ log() {
 
 : "${WEBSITE_DB:=./websites}" && [[ -f $WEBSITE_DB ]] || { log "Missing website database: $WEBSITE_DB" "ERROR"; exit 1; }
 : "${HOOK_URL:?}"
-: "${LOGFILE:=/var/log/check_site.log}"
+: "${LOGFILE:=./check_site.log}"
 
 temp_db=$(mktemp) || { log "Failed to create temporary database file" "ERROR"; exit 1; }
 while IFS=' ' read -r url name last_status last_timestamp; do 
