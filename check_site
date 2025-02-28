@@ -1,0 +1,38 @@
+#!/usr/bin/bash
+
+# HOOK_URL is an environment variable
+readonly WEBSITE_DB="/var/lib/check_site/websites"
+readonly LOGFILE="/var/log/check_site.log"
+
+log() {
+  echo "[$(date "+%Y-%m-%d %H:%M:%S")] $1" | tee -a "$LOGFILE"
+}
+
+format_message() {
+  [[ $1 == UP ]] && echo "✅ **$2** está online!" || echo "❌ **$2** está offline!"
+}
+
+check_status() {
+  [[ $(curl -Is --max-time 10 -L -w "%{http_code}" -o /dev/null "$1") == 200 ]] \
+    && echo "UP" \
+    || echo "DOWN"
+}
+
+temp_db=$(mktemp)
+
+while IFS=' ' read -r url name last_status; do 
+  status=$(check_status "$url")
+
+  if [[ $status != $last_status ]]; then 
+    curl -H "Content-Type: application/json" -X POST \
+      -d "{\"content\":\"$(format_message "$status" "$name")\"}" "$HOOK_URL"
+
+    log "$name changed to $status"
+  else 
+    log "No response change for $name, currently $last_status."
+  fi
+
+  echo "$url $name $status" >> "$temp_db"
+done < "$WEBSITE_DB"
+
+mv "$temp_db" "$WEBSITE_DB"
