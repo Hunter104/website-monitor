@@ -3,7 +3,7 @@
 : "${HOOK_URL:?}"
 ping -c 1 8.8.8.8 &>/dev/null ||  { echo "Network is down, skipping website checks."; exit 1; }
 
-while IFS=' ' read -r url name last_status last_timestamp; do 
+while IFS=' ' read -r url name last_status _; do 
   status_code=$(curl -Is --retry 2 --max-time 20 -L -w "%{http_code}" -o /dev/null "$url")
   case $? in
     0) echo "Response for $name ($url): $status_code"; [[ $status_code == 200 ]] && status="UP" || status="DOWN" ;;
@@ -12,10 +12,9 @@ while IFS=' ' read -r url name last_status last_timestamp; do
   esac
 
   if [[ $status != $last_status ]]; then 
-    echo "$name changed to $status"
     message=$([[ $status == UP ]] && echo "✅ **$name** está online!" || echo "❌ **$name** caiu!")
     curl -H "Content-Type: application/json" -X POST -d "{\"content\":\"$message\"}" "$HOOK_URL"
+    sed -i "s#^$url $name $last_status .*#$url $name $status $(date -Is)#" "$WEBSITE_DB"
+    echo "$name changed to $status"
   fi
-
-  sed -i "s#^$url $name $last_status .*#$url $name $status $(date -Is)#" "$WEBSITE_DB"
 done < "$WEBSITE_DB"
