@@ -1,5 +1,5 @@
 #!/usr/bin/bash
-: "${WEBSITE_DB:=./websites}" && [[ -f $WEBSITE_DB ]] || { echo "Missing website database: $WEBSITE_DB"; exit 1; }
+: "${WEBSITE_DB:=./monitor-db}" && [[ -f $WEBSITE_DB ]] || { echo "Missing website database: $WEBSITE_DB"; exit 1; }
 : "${HOOK_URL:?}"
 ping -c 1 8.8.8.8 &>/dev/null ||  { echo "Network is down, skipping website checks."; exit 1; }
 
