@@ -2,21 +2,22 @@
 : "${WEBSITE_DB:=./monitor-db}" 
 : "${HOOK_URL:?}"
 
-tmp_result=$(mktemp website-monitor.XXXXXX)
+tmp_result=$(mktemp -t website-monitor.XXXXXX) && cp "$WEBSITE_DB" "$tmp_result"
 while IFS=' ' read -r url name last_status _; do 
   curl -LIsf --retry 2 --max-time 10 "$url" > /dev/null
   case $? in 
     0) status="UP" ;;
     22|28) status="DOWN" ;;
-    *) echo "$url $name $last_status _" >> "$tmp_result"; continue ;;
+    *) continue ;;
   esac
-  echo "cUrl exit code for $name ($url): $?"
+  echo "Exit code for $name ($url): $?"
 
-  if [[ $status != "$last_status" ]]; then
-    echo "$name changed to $status"
-    message=$([[ $status == UP ]] && echo "✅ **$name** está online!" || echo "❌ **$name** caiu!")
-    curl -H "Content-Type: application/json" -X POST -d "{\"content\":\"$message\"}" "$HOOK_URL"
-  fi
-  echo "$url $name $status $(date -Is)" >> "$tmp_result"
+  [[ $status == "$last_status" ]] && continue
+
+  echo "$name changed to $status"
+  message=$([[ $status == UP ]] && echo "✅ **$name** está online!" || echo "❌ **$name** caiu!")
+  curl -H "Content-Type: application/json" -X POST -d "{\"content\":\"$message\"}" "$HOOK_URL"
+
+  sed -i "s#$url $name $last_status .*#$url $name $status $(date -Is)#" "$tmp_result"
 done < "$WEBSITE_DB"
 mv "$tmp_result" "$WEBSITE_DB"
