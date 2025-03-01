@@ -1,20 +1,22 @@
 #!/usr/bin/bash
-: "${WEBSITE_DB:=./monitor-db}" && [[ -f $WEBSITE_DB ]] || { echo "Missing website database: $WEBSITE_DB"; exit 1; }
+: "${WEBSITE_DB:=./monitor-db}" 
 : "${HOOK_URL:?}"
-ping -c 1 8.8.8.8 &>/dev/null ||  { echo "Network is down, skipping website checks."; exit 1; }
 
+tmp_result=$(mktemp website-monitor.XXXXXX)
 while IFS=' ' read -r url name last_status _; do 
-  status_code=$(curl -Is --retry 2 --max-time 20 -L -w "%{http_code}" -o /dev/null "$url")
-  case $? in
-    0) echo "Response for $name ($url): $status_code"; [[ $status_code == 200 ]] && status="UP" || status="DOWN" ;;
-    28) echo "Timeout while checking $name ($url)"; status="DOWN" ;;
-    *) echo "Curl error $? while checking $name ($url), leaving unchanged" ; continue ;;
+  curl -LIsf --retry 2 --max-time 10 "$url" > /dev/null
+  echo "cUrl exit code for $name ($url): $?"
+  case $? in 
+    0) status="UP" ;;
+    22|28) status="DOWN" ;;
+    *) continue ;;
   esac
 
-  if [[ $status != $last_status ]]; then 
+  if [[ $status != "$last_status" ]]; then
+    echo "$name changed to $status"
     message=$([[ $status == UP ]] && echo "✅ **$name** está online!" || echo "❌ **$name** caiu!")
     curl -H "Content-Type: application/json" -X POST -d "{\"content\":\"$message\"}" "$HOOK_URL"
-    sed -i "s#^$url $name $last_status .*#$url $name $status $(date -Is)#" "$WEBSITE_DB"
-    echo "$name changed to $status"
   fi
+  echo "$url $name $status $(date -Is)" >> "$tmp_result"
 done < "$WEBSITE_DB"
+mv "$tmp_result" "$WEBSITE_DB"
