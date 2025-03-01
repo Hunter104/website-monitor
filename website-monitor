@@ -8,7 +8,7 @@ while IFS=' ' read -r url name last_status _; do
   case $? in 
     0) status="UP" ;;
     22|28) status="DOWN" ;;
-    *) continue ;;
+    *) echo "$url $name $last_status _" >> "$tmp_result"; continue ;;
   esac
   echo "cUrl exit code for $name ($url): $?"
 
