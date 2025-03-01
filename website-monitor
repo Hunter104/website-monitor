@@ -1,8 +1,7 @@
 #!/usr/bin/bash
-: "${WEBSITE_DB:=./monitor-db}" 
 : "${HOOK_URL:?}"
 
-tmp_result=$(mktemp -t website-monitor.XXXXXX) && cp "$WEBSITE_DB" "$tmp_result"
+tmp_result=$(mktemp -t website-monitor.XXXXXX) && cp monitor-db "$tmp_result"
 while IFS=' ' read -r url name last_status _; do 
   time=$(curl -LIsf --retry 2 --max-time 10 "$url" -w '%{time_total}' -o /dev/null)
   case $? in 
@@ -19,5 +18,5 @@ while IFS=' ' read -r url name last_status _; do
   curl -H "Content-Type: application/json" -X POST -d "$message" "$HOOK_URL"
 
   sed -i "s#$url $name $last_status .*#$url $name $status $(date -Is)#" "$tmp_result"
-done < "$WEBSITE_DB"
-mv "$tmp_result" "$WEBSITE_DB"
+done < monitor-db
+mv "$tmp_result" monitor-db
