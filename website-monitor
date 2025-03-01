@@ -4,19 +4,19 @@
 
 tmp_result=$(mktemp -t website-monitor.XXXXXX) && cp "$WEBSITE_DB" "$tmp_result"
 while IFS=' ' read -r url name last_status _; do 
-  curl -LIsf --retry 2 --max-time 10 "$url" > /dev/null
+  time=$(curl -LIsf --retry 2 --max-time 10 "$url" -w '%{time_total}' -o /dev/null)
   case $? in 
-    0) status="UP" ;;
+    0) (( $(echo "$time <= 5" | bc -l ) )) && status="UP" || status="SLOW" ;;
     22|28) status="DOWN" ;;
     *) continue ;;
   esac
-  echo "Exit code for $name ($url): $?"
+  echo "Exit code for $name ($url): $?, time taken: $time"
 
   [[ $status == "$last_status" ]] && continue
 
   echo "$name changed to $status"
-  message=$([[ $status == UP ]] && echo "✅ **$name** está online!" || echo "❌ **$name** caiu!")
-  curl -H "Content-Type: application/json" -X POST -d "{\"content\":\"$message\"}" "$HOOK_URL"
+  message=$(awk -F';' -v status="$status" -v name="$name" ' $1 == status {gsub(/\[\[SITE\]\]/, name); print $2}' messages)
+  curl -H "Content-Type: application/json" -X POST -d "$message" "$HOOK_URL"
 
   sed -i "s#$url $name $last_status .*#$url $name $status $(date -Is)#" "$tmp_result"
 done < "$WEBSITE_DB"
