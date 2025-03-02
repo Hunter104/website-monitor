@@ -1,11 +1,12 @@
 #!/usr/bin/bash
 : "${HOOK_URL:?}"
+readonly TIMEOUT_LIMIT=20
 
 tmp_result=$(mktemp -t website-monitor.XXXXXX) && cp monitor-db "$tmp_result"
 while IFS=' ' read -r url name last_status _; do 
-  time=$(curl -LIsf --retry 2 --max-time 10 "$url" -w '%{time_total}' -o /dev/null)
+  time=$(curl -LIsf --retry 2 --max-time "$TIMEOUT_LIMIT" "$url" -w '%{time_total}' -o /dev/null)
   case $? in 
-    0) (( $(echo "$time <= 5" | bc -l ) )) && status="UP" || status="SLOW" ;;
+    0) (( $(echo "$time <= $TIMEOUT_LIMIT/2" | bc -l ) )) && status="UP" || status="SLOW" ;;
     22|28) status="DOWN" ;;
     *) continue ;;
   esac
