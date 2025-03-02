@@ -21,6 +21,6 @@ while IFS=' ' read -r url name last_status _; do
     'SLOW') message="{\"content\": \"⌛ **$name** está apresentando lentidão!\"}" ;;
   esac
   curl -H "Content-Type: application/json" -X POST -d "$message" "$HOOK_URL"
-  sed -i "s#$url $name $last_status .*#$url $name $status $(date -Is)#" "$tmp_result"
+  sed -i "s|$url $name $last_status .*|$url $name $status $(date -Is)|" "$tmp_result"
 done < ./monitor-db
 mv "$tmp_result" ./monitor-db
