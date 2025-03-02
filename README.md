@@ -84,6 +84,7 @@ WantedBy=timers.target
 ## Exemplo de Saída 
 Quando o script detectar uma mudança de estado, ele envia uma notificação para o Discord, como estas:
 
-- ⌛ SITE está apresentando lentidão!  
-- ❌ SITE está fora do ar! 😞  
-- ✅ SITE está online!
+<pre>⌛ SITE está apresentando lentidão! 
+❌ SITE está fora do ar! 😞  
+✅ SITE está online!
+</pre>
