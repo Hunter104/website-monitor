@@ -45,7 +45,7 @@ Configure o cron através de ```crontab -e``` para rodar o script periodicamente
 */5 * * * * cd /caminho/para/website-monitor/; ./website-monitor
 ```
 
-Para armazenar a saída em um arquivo de log com data/hora (data/hora fornecida pelo comando ts do pacote ```more-utils```):
+Para armazenar a saída em um arquivo de log com data/hora (data/hora fornecida pelo comando ts do pacote ```moreutils```):
 
 ```bash
 */5 * * * * cd /caminho/para/website-monitor/; ./website-monitor | ts > /var/log/website-monitor.log
