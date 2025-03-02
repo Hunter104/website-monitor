@@ -3,16 +3,17 @@
 
 tmp_result=$(mktemp -t website-monitor.XXXXXX) && cp ./monitor-db "$tmp_result"
 while IFS=' ' read -r url name last_status _; do 
-  time=$(curl -LIsf --retry 2 --max-time 15 "$url" -w '%{time_total}' -o /dev/null)
+  echo "Testing $name ($url)"
+  time=$(curl -LIsSf --retry 2 --max-time 15 "$url" -w '%{time_total}' -o /dev/null)
   case $? in 
     0) (( $(echo "$time <= 5" | bc -l ) )) && status="UP" || status="SLOW" ;;
     22|28) status="DOWN" ;;
     *) continue ;;
   esac
-  echo "Exit code for $name ($url): $?, time taken: $time"
+  echo "time taken: $time"
 
   [[ $status == "$last_status" ]] && continue
-  echo "$name changed to $status"
+  echo "Status changed to $status"
 
   case $status in 
     'UP') message="{\"content\": \"✅ **$name** está online!\"}" ;; 
