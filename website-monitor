@@ -13,11 +13,14 @@ while IFS=' ' read -r url name last_status _; do
   echo "Exit code for $name ($url): $?, time taken: $time"
 
   [[ $status == "$last_status" ]] && continue
-
   echo "$name changed to $status"
-  message=$(awk -F';' -v status="$status" -v name="$name" ' $1 == status {gsub(/\[\[SITE\]\]/, name); print $2}' messages)
-  curl -H "Content-Type: application/json" -X POST -d "$message" "$HOOK_URL"
 
+  case $status in 
+    'UP') message="{\"content\": \"✅ **$name** está online!\"}" ;; 
+    'DOWN') message="{\"content\": \"❌ **$name** está fora do ar! 😞\"}" ;;
+    'SLOW') message="{\"content\": \"⌛ **$name** está apresentando lentidão!\"}" ;;
+  esac
+  curl -H "Content-Type: application/json" -X POST -d "$message" "$HOOK_URL"
   sed -i "s#$url $name $last_status .*#$url $name $status $(date -Is)#" "$tmp_result"
 done < monitor-db
 mv "$tmp_result" monitor-db
