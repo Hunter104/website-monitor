@@ -24,6 +24,6 @@ while IFS=' ' read -r url name last_status _; do
     'UP') send_message "✅ **$name** está online!" ;; 
     'DOWN') send_message "❌ **$name** está fora do ar! 😞" ;;
   esac
-  sed -i "s|$url $name $last_status .* .*|$url $name $status $(date -Is) $time|" "$tmp_result"
+  sed -i "s|$url $name $last_status .*|$url $name $status $(date -Is)|" "$tmp_result"
 done < ./monitor-db
 mv "$tmp_result" ./monitor-db
