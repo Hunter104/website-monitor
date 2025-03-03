@@ -1,6 +1,11 @@
 #!/usr/bin/bash
 : "${HOOK_URL:?}"
 
+send_message() { 
+  echo "sending message: $1"
+  curl -H "Content-Type: application/json" -X POST -d "{\"content\":\"$1\"}" "$HOOK_URL" 
+}
+
 tmp_result=$(mktemp -t website-monitor.XXXXXX) && cp ./monitor-db "$tmp_result"
 while IFS=' ' read -r url name last_status _; do 
   echo "Testing $name ($url)"
@@ -16,10 +21,9 @@ while IFS=' ' read -r url name last_status _; do
   echo "Status changed to $status"
 
   case $status in 
-    'UP') message="{\"content\": \"✅ **$name** está online!\"}" ;; 
-    'DOWN') message="{\"content\": \"❌ **$name** está fora do ar! 😞\"}" ;;
+    'UP') send_message "✅ **$name** está online!" ;; 
+    'DOWN') send_message "❌ **$name** está fora do ar! 😞" ;;
   esac
-  curl -H "Content-Type: application/json" -X POST -d "$message" "$HOOK_URL"
-  sed -i "s|$url $name $last_status .*|$url $name $status $(date -Is)|" "$tmp_result"
+  sed -i "s|$url $name $last_status .* .*|$url $name $status $(date -Is) $time|" "$tmp_result"
 done < ./monitor-db
 mv "$tmp_result" ./monitor-db
