@@ -20,8 +20,7 @@ while IFS=' ' read -r url name last_status _; do
   [[ $status == "$last_status" ]] && continue
   echo "Status changed to $status, notifying webhook and saving changes"
 
-  if [[ $status == UP ]]; then message="✅ **$name** está online!"; else message="❌ **$name** está fora do ar! 😞"; fi
-  send_message "$message"
+  send_message "$(if [[ $status == UP ]]; then echo "✅ **$name** está online!"; else echo "❌ **$name** está fora do ar! 😞"; fi)"
   sed -i "s|$url $name $last_status .*|$url $name $status $(date -Is)|" "$tmp_result"
 done < ./monitor-db
 mv "$tmp_result" ./monitor-db
