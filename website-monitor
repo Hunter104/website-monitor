@@ -8,22 +8,20 @@ send_message() {
 
 tmp_result=$(mktemp -t website-monitor.XXXXXX) && cp ./monitor-db "$tmp_result"
 while IFS=' ' read -r url name last_status _; do 
-  echo "Testing $name ($url)"
+  echo "Starting test..."
   time=$(curl -LIsSf --retry 2 --max-time 15 "$url" -w '%{time_total}' -o /dev/null)
   case $? in 
     0) status="UP" ;;
     22|28) status="DOWN" ;;
     *) continue ;;
   esac
-  echo "time taken: $time"
+  echo "$name's ($url) results: Time taken $time; Exit code $?; Status: $status"
 
   [[ $status == "$last_status" ]] && continue
-  echo "Status changed to $status"
+  echo "Status changed to $status, notifying webhook and saving changes"
 
-  case $status in 
-    'UP') send_message "✅ **$name** está online!" ;; 
-    'DOWN') send_message "❌ **$name** está fora do ar! 😞" ;;
-  esac
+  if [[ $status == UP ]]; then message="✅ **$name** está online!"; else message="❌ **$name** está fora do ar! 😞"; fi
+  send_message "$message"
   sed -i "s|$url $name $last_status .*|$url $name $status $(date -Is)|" "$tmp_result"
 done < ./monitor-db
 mv "$tmp_result" ./monitor-db
