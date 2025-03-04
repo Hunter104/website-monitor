@@ -27,7 +27,7 @@ while IFS=' ' read -r url name last_status _; do
   case $status in 
     UP) send_message "✅ **$name** está online!" ;;
     DOWN) send_message "❌ **$name** está fora do ar! 😞" ;;
-    SLOW) send_message "🚧 **$name** está lento!" ;;
+    SLOW) send_message "⌛ **$name** está lento!" ;;
   esac
 done < ./monitor-db
 mv "$tmp_result" ./monitor-db
