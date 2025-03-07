@@ -4,6 +4,9 @@ send_message() { curl -H "Content-Type: application/json" -X POST -d "{\"content
 
 tmp_result=$(mktemp -t website-monitor.XXXXXX) && cp ./monitor-db "$tmp_result"
 tmp_error=$(mktemp -t website-monitor.XXXXXX)
+
+trap "rm -f $tmp_error $tmp_result" EXIT
+
 while IFS=' ' read -r url name last_status _; do 
   : > "$tmp_error"
 
