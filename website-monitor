@@ -5,12 +5,13 @@ send_message() { curl -H "Content-Type: application/json" -X POST -d "{\"content
 tmp_result=$(mktemp -t website-monitor.XXXXXX) && cp ./monitor-db "$tmp_result"
 while IFS=' ' read -r url name last_status _; do 
   time=$(curl -LIsSf --retry 3 --max-time 30 "$url" -w '%{time_total}' -o /dev/null)
-  case $? in 
+  exit_code=$?
+  case $exit_code in 
     0) status="UP" ;;
     22|28) status="DOWN" ;;
     *) status="$last_status" ;;
   esac
-  echo "$name ($url); Time taken: $time; Exit code: $?; Status: $status"
+  echo "$name ($url); Time taken: $time; Exit code: $exit_code; Status: $status"
 
   [[ $status == "$last_status" ]] && continue
   send_message "$(if [[ $status == UP ]]; then echo "✅ **$name** está online!"; else echo "❌ **$name** está fora do ar! 😞"; fi)"
