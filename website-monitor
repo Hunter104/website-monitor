@@ -3,8 +3,10 @@
 send_message() { curl -H "Content-Type: application/json" -X POST -d "{\"content\":\"$1\"}" "$HOOK_URL"; }
 
 tmp_result=$(mktemp -t website-monitor.XXXXXX) && cp ./monitor-db "$tmp_result"
+tmp_error=$(mktemp -t website-monitor.XXXXXX)
 while IFS=' ' read -r url name last_status _; do 
-  tmp_error=$(mktemp -t website-monitor.XXXXXX)
+  : > "$tmp_error"
+
   time=$(curl -LIsSf --retry 6 --max-time 20 "$url" -w '%{time_total}' -o /dev/null -v 2>"$tmp_error")
   exit_code=$?
   case $exit_code in 
@@ -12,7 +14,8 @@ while IFS=' ' read -r url name last_status _; do
     22|28) status="DOWN" ;;
     *) status="$last_status" ;;
   esac
-  [[ $exit_code -gt 0 ]] && cat "$tmp_error"
+
+  [[ $exit_code -ne 0 ]] && cat "$tmp_error"
   echo "$name ($url); Time taken: $time; Exit code: $exit_code; Status: $status"
 
   [[ $status == "$last_status" ]] && continue
