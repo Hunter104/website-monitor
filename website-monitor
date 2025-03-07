@@ -4,7 +4,7 @@ send_message() { curl -H "Content-Type: application/json" -X POST -d "{\"content
 
 tmp_result=$(mktemp -t website-monitor.XXXXXX) && cp ./monitor-db "$tmp_result"
 while IFS=' ' read -r url name last_status _; do 
-  time=$(curl -LIsSf --retry 2 --max-time 15 "$url" -w '%{time_total}' -o /dev/null)
+  time=$(curl -LIsSf --retry 3 --max-time 30 "$url" -w '%{time_total}' -o /dev/null)
   case $? in 
     0) status="UP" ;;
     22|28) status="DOWN" ;;
