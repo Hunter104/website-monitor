@@ -1,6 +1,6 @@
 #!/usr/bin/bash
 : "${HOOK_URL:?}"
-send_message() { curl -H "Content-Type: application/json" -X POST -d "{\"content\":\"$1\"}" "$HOOK_URL"; }
+send_message() { curl -X POST -F "content=$1" "$HOOK_URL"; }
 
 tmp_result=$(mktemp -t website-monitor.XXXXXX) && cp ./monitor-db "$tmp_result"
 tmp_error=$(mktemp -t website-monitor.XXXXXX)
@@ -19,7 +19,8 @@ while IFS=' ' read -r url name last_status _; do
   esac
 
   [[ $exit_code -ne 0 ]] && cat "$tmp_error"
-  echo "$name ($url); Time taken: $time; Exit code: $exit_code; Status: $status"
+  printf "[%s] %s\n  ↳ URL: %s\n  ↳ Status: %s (Exit: %s)\n  ↳ Response Time: %.2fs\n" \
+  "$(date '+%Y-%m-%d %H:%M:%S')" "$name" "$url" "$status" "$exit_code" "$time"
 
   [[ $status == "$last_status" ]] && continue
   send_message "$(if [[ $status == UP ]]; then echo "✅ **$name** está online!"; else echo "❌ **$name** está fora do ar! 😞"; fi)"
