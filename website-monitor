@@ -10,7 +10,7 @@ trap 'rm -f $tmp_error $tmp_result' EXIT
 while IFS=' ' read -r url name last_status _; do 
   : > "$tmp_error"
 
-  time=$(curl -LIsSf --retry 3 --max-time 20 "$url" -w '%{time_total}' -o /dev/null -v 2>"$tmp_error")
+  time=$(curl -LIsSf --retry 6 --max-time 20 "$url" -w '%{time_total}' -o /dev/null -v 2>"$tmp_error")
   exit_code=$?
   case $exit_code in 
     0) status="UP" ;;
@@ -19,8 +19,8 @@ while IFS=' ' read -r url name last_status _; do
   esac
 
   [[ $exit_code -ne 0 ]] && cat "$tmp_error"
-  printf "[%s] %s\n  ↳ URL: %s\n  ↳ Status: %s (Exit: %s)\n  ↳ Response Time: %.2fs\n" \
-  "$(date '+%Y-%m-%d %H:%M:%S')" "$name" "$url" "$status" "$exit_code" "$time"
+  printf "[%s]\n  ↳ URL: %s\n  ↳ Status: %s (Exit: %s)\n  ↳ Response Time: %.2fs\n" \
+  "$name" "$url" "$status" "$exit_code" "$time"
 
   [[ $status == "$last_status" ]] && continue
   send_message "$(if [[ $status == UP ]]; then echo "✅ **$name** está online!"; else echo "❌ **$name** está fora do ar! 😞"; fi)"
