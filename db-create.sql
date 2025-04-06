@@ -13,8 +13,9 @@ CREATE TABLE Website (
 );
 
 CREATE TRIGGER Trg_lastChecked
-AFTER UPDATE ON Website
-FOR EACH ROW
+  AFTER UPDATE ON Website
+  FOR EACH ROW
+  WHEN NEW.LastUpdate < OLD.LastUpdate
 BEGIN 
   UPDATE Website SET last_checked = CURRENT_TIMESTAMP WHERE id=OLD.id;
 END
