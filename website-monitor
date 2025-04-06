@@ -1,38 +1,27 @@
 #!/usr/bin/bash
 : "${HOOK_URL:?}"
 export LC_NUMERIC=C
-
 tmp_error=$(mktemp -t website-monitor.XXXXXX)
 trap 'rm -f $tmp_error' EXIT
+
 send_message() { curl -X POST -F "content=$1" "$HOOK_URL"; }
-query() {
-  if ! sqlite3 monitor-db "$1"; then 
-    echo "Error while running query $1" >&2;
-    exit 1;
-  fi
-}
+query() { sqlite3 monitor-db "$1" || { echo "Query failed: $1" >&2; exit 1; } }
 
 query 'SELECT * FROM Website' | \
 while IFS='|' read -r id url name last_status _; do 
-  : > "$tmp_error"
   time=$(curl -LIsSf --retry 6 --max-time 20 "$url" -w '%{time_total}' -o /dev/null -v 2>"$tmp_error")
   exit_code=$?
+
   case $exit_code in 
     0) status="UP" ;;
     22|28) status="DOWN" ;;
     *) status="$last_status" ;;
   esac
   
-  query "UPDATE Website SET last_status='$status', last_checked='$(date -Is)' WHERE id=$id;"
-  printf "[%s] ↳ URL: %s ↳ Status: %s (Exit: %s) ↳ Response Time: %.2fs\n" \
-  "$name" "$url" "$status" "$exit_code" "$time"
-
+  query "UPDATE Website SET last_status='$status' WHERE id=$id;"
+  printf "[%s] ↳ URL: %s ↳ Status: %s (Exit: %s) ↳ Response Time: %.2fs\n" "$name" "$url" "$status" "$exit_code" "$time"
   [[ $exit_code -ne 0 ]] && cat "$tmp_error"
   [[ $status == "$last_status" ]] && continue
 
-  if [[ $status == UP ]]; then
-    send_message "✅ **$name** está online!"
-  else
-    send_message "❌ **$name** está fora do ar! 😞"
-  fi
+  send_message "$( [[ $status == UP ]] && echo "✅ **$name** está online!" || echo "❌ **$name** está fora do ar! 😞" )"
 done
