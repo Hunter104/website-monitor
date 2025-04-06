@@ -18,3 +18,7 @@ FOR EACH ROW
 BEGIN 
   UPDATE Website SET last_checked = CURRENT_TIMESTAMP WHERE id=OLD.id;
 END
+
+INSERT INTO Website (url, name) VALUES
+('https://sigaa.unb.br', 'SIGAA'),
+('https://aprender3.unb.br', 'Aprender3');
