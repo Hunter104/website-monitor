@@ -15,10 +15,10 @@ CREATE TABLE Website (
 CREATE TRIGGER Trg_lastChecked
   AFTER UPDATE ON Website
   FOR EACH ROW
-  WHEN NEW.LastUpdate < OLD.LastUpdate
+  WHEN NEW.last_checked = OLD.last_checked OR OLD.last_checked IS NULL
 BEGIN 
   UPDATE Website SET last_checked = CURRENT_TIMESTAMP WHERE id=OLD.id;
-END
+END;
 
 INSERT INTO Website (url, name) VALUES
 ('https://sigaa.unb.br', 'SIGAA'),
