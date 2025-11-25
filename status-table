@@ -1,0 +1,5 @@
+LAST_STATUS CHECK_RESULT  NEXT_STATUS
+UP          DOWN          DEGRADED
+DEGRADED    DOWN          DOWN
+DEGRADED    UP            UP
+DOWN        UP            UP

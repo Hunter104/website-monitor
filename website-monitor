@@ -9,7 +9,7 @@ check_website() {
   IFS='|' read -r id url name last_status _ <<< "$1"
   tmp_error=$(mktemp -t website-monitor.XXXXXX)
 
-  time=$(curl -LIsSf --retry 6 --max-time 20 "$url" -w '%{time_total}' -o /dev/null -v 2>"$tmp_error")
+  time=$(curl -LIsSf --retry 3 --max-time 10 "$url" -w '%{time_total}' -o /dev/null -v 2>"$tmp_error")
   exit_code=$?
 
   case $exit_code in 
@@ -18,13 +18,21 @@ check_website() {
     *) status="$last_status" ;; 
   esac
 
-  query "UPDATE Website SET last_status='$status' WHERE id=$id;"
-  printf "[%s] ↳ URL: %s ↳ Status: %s (Exit: %s) ↳ Response Time: %.2fs\n" "$name" "$url" "$status" "$exit_code" "$time"
+  next_state=$(awk "NR>1{if (\$1 == \"$last_status\" && \$2 == \"$status\") print \$3}" status_table)
+  if [[ -z $next_state ]]; then 
+    echo "Couldn't find next state for last: $last_status current: $status"
+    exit 1
+  fi
 
+  query "UPDATE Website SET last_status='$next_state' WHERE id=$id;"
   [[ $exit_code -ne 0 ]] && cat "$tmp_error"
-  [[ $status == "$last_status" ]] && { rm "$tmp_error"; return; }
-  send_message "$( [[ $status == UP ]] && echo "✅ **$name** está online!" || echo "❌ **$name** está fora do ar! 😞" )"
-
+  [[ $next_state == "$last_status" ]] && { rm "$tmp_error"; return; }
+  printf "Status change detected [%s] %s (%.2fs)\n" "$next_state" "$url" "${time:-0}"
+  if [[ "$status" == "UP" ]]; then
+    send_message "✅ **$name** está online!"
+  elif [[ "$status" == "DOWN" ]]; then 
+    send_message "❌ **$name** está fora do ar! 😞" 
+  fi
   rm "$tmp_error"
 }
 
