@@ -1,5 +1,7 @@
 LAST_STATUS CHECK_RESULT  NEXT_STATUS
-UP          DOWN          DEGRADED
-DEGRADED    DOWN          DOWN
-DEGRADED    UP            UP
+UP          UP            UP          
+UP          DOWN          DEGRADED    
 DOWN        UP            UP
+DOWN        DOWN          DOWN
+DEGRADED    UP            UP
+DEGRADED    DOWN          DOWN

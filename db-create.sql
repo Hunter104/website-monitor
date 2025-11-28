@@ -1,14 +1,14 @@
 -- =============================================
 -- Author: Hunter104
 -- Create date: 05/04/2025
--- Description: Script for initialization of website-monitor database
+-- Description: Script for initialization of the website-monitor database
 -- =============================================
 
 CREATE TABLE Website (
   id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
   url TEXT NOT NULL UNIQUE,
   name TEXT NOT NULL,
-  last_status TEXT CHECK (last_status IN ('UP', 'DOWN', 'SLOW')),
+  last_status TEXT CHECK (last_status IN ('UP', 'DOWN', 'DEGRADED')) DEFAULT 'UP',
   last_checked TEXT
 );
 
