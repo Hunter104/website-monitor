@@ -1,7 +1,7 @@
-LAST_STATUS CHECK_RESULT  NEXT_STATUS
-UP          UP            UP          
-UP          DOWN          DEGRADED    
-DOWN        UP            UP
-DOWN        DOWN          DOWN
-DEGRADED    UP            UP
-DEGRADED    DOWN          DOWN
+LAST_STATUS,CHECK_RESULT,NEXT_STATUS,MESSAGE
+UP,UP,UP,
+UP,DOWN,DEGRADED,
+DOWN,UP,UP,✅ **$name** está online!
+DOWN,DOWN,DOWN,
+DEGRADED,UP,UP,
+DEGRADED,DOWN,DOWN,❌ **$name** está fora do ar!😞

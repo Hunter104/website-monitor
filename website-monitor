@@ -4,9 +4,10 @@ export LC_NUMERIC=C
 
 send_message() { curl -s -X POST -F "content=$1" "$HOOK_URL"; }
 query() { sqlite3 monitor-db "$1" || { echo "Query failed: $1" >&2; exit 1; }; }
+fail() { echo "$1" 2>&1; exit 1;}
 
 check_website() {
-  IFS='|' read -r id url name last_status _ <<< "$1"
+  IFS='|' read -r id url name last _ <<< "$1"
   tmp_error=$(mktemp -t website-monitor.XXXXXX)
 
   time=$(curl -LIsSf --retry 3 --max-time 10 "$url" -w '%{time_total}' -o /dev/null -v 2>"$tmp_error")
@@ -15,30 +16,23 @@ check_website() {
     echo "Error while connecting to website: "
     cat "$tmp_error"
   fi
+  rm "$tmp_error"
 
   case $exit_code in 
     0) status="UP" ;;
     22|28) status="DOWN" ;; 
-    *) status="$last_status" ;; 
+    *) status="$last" ;; 
   esac
 
-  next_state=$(awk "NR>1{if (\$1 == \"$last_status\" && \$2 == \"$status\") print \$3}" status-table)
-  if [[ -z "$next_state" ]]; then
-    echo "No next state found for {last: $last_status, current:$status}"
-    exit 1
-  fi
-  [[ "$next_state" == "$last_status" ]] && { rm "$tmp_error"; return; }
+  IFS='|' read -r next msg <<< "$(awk --csv -v OFS='|' -v l="$last" -v c="$status" 'NR>1 && $1==l && $2==c {print $3, $4}' status-table)"
 
-  query "UPDATE Website SET last_status='$next_state' WHERE id=$id;"
-  printf "Status change detected [%s] %s (%.2fs)\n" "$next_state" "$url" "${time:-0}"
+  [[ -z "$next" ]] && fail "No next state found for {last: $last, current:$status}"
+  [[ "$next" == "$last" ]] && return
 
-  case "$next_state" in
-    UP)   send_message "✅ **$name** está online!" ;;
-    DOWN) send_message "❌ **$name** está fora do ar! 😞" ;;
-  esac
-
-  rm "$tmp_error"
+  query "UPDATE Website SET last_status='$next' WHERE id=$id;"
+  printf "Status change detected [%s] %s (%.2fs)\n" "$next" "$url" "${time:-NONE}"
+  [[ -n "$msg" ]] && send_message "$(eval echo "$msg")"
 }
 
-export -f check_website send_message query
+export -f check_website send_message query fail
 query 'SELECT * FROM Website' | xargs -P4 -I{} bash -c 'check_website "$@"' _ "{}"
